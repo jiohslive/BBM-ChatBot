@@ -1,6 +1,7 @@
 import os
 import random
 import asyncio
+import time
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
@@ -41,14 +42,23 @@ JOKES = [
     "आज episode पाहून उशीरापर्यंत झोप लागणार नाही 😆",
 ]
 
+last_reply_time = {}
+last_user_replied = None
+bot_muted_until = 0
+
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global last_user_replied, bot_muted_until
+
     if not update.message or not update.message.text:
         return
 
-    text = update.message.text.lower()
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
     name = update.message.from_user.first_name or "दोस्त"
+    text = update.message.text.lower()
+    now = time.time()
 
-    # 20% वेळा bot शांत राहील
+    # 20% वेळा bot शांत
     if random.random() < 0.2:
         return
 
@@ -57,9 +67,11 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Poll feature
     if "poll" in text or "मतदान" in text:
-        question = "आजचा Best Performer कोण?"
-        options = ["Contestant A", "Contestant B", "Contestant C", "Contestant D"]
-        await update.message.reply_poll(question=question, options=options, is_anonymous=False)
+        await update.message.reply_poll(
+            question="आजचा Best Performer कोण?",
+            options=["Contestant A", "Contestant B", "Contestant C", "Contestant D"],
+            is_anonymous=False
+        )
         return
 
     # Joke feature
@@ -77,7 +89,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(msg)
 
 def main():
-    TOKEN = os.environ.get("8224981554:AAHAP_geKlGR_ENejcRLVY85WrbZE4XeKKE")
+    TOKEN = os.environ.get("8224981554:AAFvfBIyGGtKaeqT7LZR4AoIXAgnP9id5Pc")
     if not TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN Railway Variables मध्ये add केलेला नाही!")
 
