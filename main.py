@@ -1,7 +1,6 @@
 import os
 import random
 import asyncio
-import time
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
@@ -42,30 +41,19 @@ JOKES = [
     "आज episode पाहून उशीरापर्यंत झोप लागणार नाही 😆",
 ]
 
-last_reply_time = {}
-last_user_replied = None
-bot_muted_until = 0
-
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global last_user_replied, bot_muted_until
-
     if not update.message or not update.message.text:
         return
 
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-    name = update.message.from_user.first_name or "दोस्त"
     text = update.message.text.lower()
-    now = time.time()
+    name = update.message.from_user.first_name
 
-    # 20% वेळा bot शांत
+    # 20% वेळा शांत
     if random.random() < 0.2:
         return
 
-    # Human-like delay
     await asyncio.sleep(random.uniform(1.5, 3.5))
 
-    # Poll feature
     if "poll" in text or "मतदान" in text:
         await update.message.reply_poll(
             question="आजचा Best Performer कोण?",
@@ -74,13 +62,12 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Joke feature
     if "joke" in text or "विनोद" in text:
         await update.message.reply_text(random.choice(JOKES))
         return
 
     for keyword, responses in KEYWORD_REPLIES.items():
-        if keyword.lower() in text:
+        if keyword in text:
             msg = random.choice(responses)
             break
     else:
@@ -89,12 +76,13 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(msg)
 
 def main():
-    TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+    TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     if not TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN Railway Variables मध्ये add केलेला नाही!")
 
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply))
+    print("🤖 Bot started successfully...")
     app.run_polling()
 
 if __name__ == "__main__":
