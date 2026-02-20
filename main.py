@@ -89,7 +89,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(msg)
 
 def main():
-    TOKEN = os.environ.get("8224981554:AAFvfBIyGGtKaeqT7LZR4AoIXAgnP9id5Pc")
+    TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN Railway Variables मध्ये add केलेला नाही!")
 
