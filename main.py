@@ -17,7 +17,7 @@ if not TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN Railway Variables मध्ये add केलेला नाही!")
 
 LAST_REPLY = {}
-REPLY_COOLDOWN = 20  # seconds
+REPLY_COOLDOWN = 15  # seconds
 
 BB_REPLIES = [
     "आज eviction कोणाचं होईल वाटतंय? 😬",
@@ -25,13 +25,6 @@ BB_REPLIES = [
     "आजचा episode full drama असणार वाटतो 😂🔥",
     "त्या दोघांचं भांडण आज पेटणार वाटतं 😅",
     "Captaincy task मस्त रंगणार वाटतो 👑",
-]
-
-TEXT_MEMES = [
-    "Bigg Boss घरात शांतता म्हणजे वादळ येण्याआधीची शांतता 😂",
-    "Nomination आला की सगळे suddenly साधू बनतात 😆",
-    "आज episode पाहून झोप जाणार नाही 🤣",
-    "घरात drama नसेल तर मजाच नाही 😎🔥",
 ]
 
 def get_random_meme_image():
@@ -54,7 +47,9 @@ def should_reply(chat_id):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "मी Bigg Boss Marathi Fan Bot आहे 🔥\n'meme de' लिहिलं की image meme येईल 😄"
+        "🤖 Bigg Boss Marathi Fan Bot चालू आहे!\n\n"
+        "➡️ 'meme de' लिहिलं की image meme येईल 😂🔥\n"
+        "➡️ Eviction, Wildcard, Nomination वर गप्पा मारतो 😎"
     )
 
 async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -80,7 +75,7 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 caption="😂🔥 Bigg Boss Meme"
             )
         else:
-            await update.message.reply_text("आज meme API down आहे 😭 नंतर try कर")
+            await update.message.reply_text("आज meme मिळालं नाही 😭 थोड्या वेळाने try कर!")
         return
 
     if "eviction" in text:
@@ -99,6 +94,7 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def on_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.poll:
         return
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="या poll वर मत द्या रे 😄 कोण जिंकणार वाटतंय?"
