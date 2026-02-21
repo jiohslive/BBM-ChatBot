@@ -10,15 +10,17 @@ from telegram.ext import (
     filters,
 )
 
+# ====== Railway Variables ======
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN Railway Variables मध्ये add केलेला नाही!")
 
-# 👉 तुझ्या channel चा username इथे टाक ( @ शिवाय )
-MEME_CHANNEL_USERNAME = "BigBossMarathiMemes"  # example: BigBossMemes
+# Optional: Admin ID variable (नको असेल तर Railway मध्ये ADMIN_ID add करू नकोस)
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 
+MEME_CACHE = []
 LAST_REPLY = {}
-REPLY_COOLDOWN = 10  # seconds
+REPLY_COOLDOWN = 10
 
 BB_REPLIES = [
     "आज eviction कोणाचं होईल वाटतंय? 😬",
@@ -30,7 +32,9 @@ BB_REPLIES = [
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "मी Bigg Boss Marathi Fan Bot आहे 🔥\n'meme de' लिहिलं की Season 6 चे memes येतील 😎"
+        "🤖 Bigg Boss Marathi Fan Bot Started!\n\n"
+        "👉 'meme de' लिहिलं की memes मिळतील\n"
+        "👉 Admin ने आधी /syncmemes करायचं"
     )
 
 def should_reply(chat_id):
@@ -41,22 +45,27 @@ def should_reply(chat_id):
         return True
     return False
 
-async def get_random_meme_from_channel(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        chat = await context.bot.get_chat(f"@{MEME_CHANNEL_USERNAME}")
-        messages = []
-        async for msg in context.bot.get_chat_history(chat_id=chat.id, limit=50):
-            if msg.photo:
-                messages.append(msg)
+# 👉 Admin manually sync memes (forward channel memes to bot)
+async def sync_memes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if ADMIN_ID != 0 and update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("हे command फक्त admin साठी आहे ❌")
+        return
 
-        if not messages:
-            return None
+    MEME_CACHE.clear()
+    await update.message.reply_text(
+        "📥 Channel मधले memes bot ला forward कर.\n"
+        "सगळे forward झाले की 'done' लिही."
+    )
 
-        return random.choice(messages)
+async def receive_forwarded_memes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.photo:
+        MEME_CACHE.append(update.message.photo[-1].file_id)
 
-    except Exception as e:
-        print("Channel meme fetch error:", e)
-        return None
+async def done_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if ADMIN_ID != 0 and update.effective_user.id != ADMIN_ID:
+        return
+
+    await update.message.reply_text(f"✅ {len(MEME_CACHE)} memes sync झाले 🔥")
 
 async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
@@ -71,21 +80,18 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.lower().strip()
 
-    # 🔥 MEME COMMAND
     if "meme" in text:
-        meme_msg = await get_random_meme_from_channel(context)
-        if meme_msg:
+        if MEME_CACHE:
             await update.message.reply_photo(
-                photo=meme_msg.photo[-1].file_id,
-                caption="😂🔥 Bigg Boss Marathi S6 Meme"
+                photo=random.choice(MEME_CACHE),
+                caption="😂🔥 Bigg Boss Marathi Meme"
             )
         else:
             await update.message.reply_text("Channel मध्ये अजून memes नाहीत 😭 आधी upload कर!")
         return
 
-    # NORMAL CHAT
     if "eviction" in text:
-        reply = "Eviction यावेळी खूपच shocking जाणार वाटतंय 😬 कोण जाईल वाटतं?"
+        reply = "Eviction यावेळी खूपच shocking जाणार वाटतंय 😬"
     elif "wildcard" in text:
         reply = "Wildcard आला तर घरात आग लागेल 🔥😂"
     elif "nomination" in text:
@@ -101,6 +107,9 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("syncmemes", sync_memes))
+    app.add_handler(MessageHandler(filters.PHOTO, receive_forwarded_memes))
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^done$"), done_sync))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_all))
 
     print("🤖 Bigg Boss Marathi Bot Started...")
