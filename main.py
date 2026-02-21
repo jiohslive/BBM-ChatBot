@@ -2,7 +2,7 @@ import os
 import random
 import time
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, time as dtime
 
 from telegram import Update
 from telegram.ext import (
@@ -27,21 +27,21 @@ MEME_CACHE = []
 LAST_REPLY = {}
 REPLY_COOLDOWN = 10  # seconds
 
+CONTESTANTS = ["अभिजीत", "सूरज", "निकिता", "अपूर्वा", "वैभव", "आर्या"]
+
 BB_REPLIES = [
     "आज eviction कोणाचं होईल वाटतंय? 😬",
-    "Wildcard आला तर गेमच बदलून जाईल 🔥",
-    "आजचा episode full drama असणार वाटतो 😂🔥",
-    "त्या दोघांचं भांडण आज पेटणार वाटतं 😅",
-    "Captaincy task मस्त रंगणार वाटतो 👑",
-    "तुला आज कोण strongest वाटतो? 🤔",
-    "आज nomination मध्ये twist येईल का? 👀",
-    "घरातला माहोल आज जरा गरम दिसतोय 😆"
+    "Wildcard आला तर गेम बदलणार 🔥",
+    "आजचा episode full drama 😂🔥",
+    "घरात आज tension आहे 😅",
+    "Captaincy task रंगणार 👑",
+    "आज nomination मध्ये twist येईल का? 👀"
 ]
 
 QUIZ_QUESTIONS = [
     ("Bigg Boss Marathi चा host कोण आहे?", "महेश मांजरेकर"),
-    ("आजच्या episode मध्ये काय twist येईल?", "कोणी तरी रडणार 😂"),
-    ("तुझा favourite contestant कोण?", "तुझा favouriteच 😎"),
+    ("आज घरात कोण dominate करतोय?", "जो जास्त भांडतो 😂"),
+    ("तुझा favourite contestant कोण?", "तुझाच favourite 😎"),
 ]
 
 MEME_CAPTIONS = [
@@ -50,6 +50,13 @@ MEME_CAPTIONS = [
     "😆 House मधला Drama!",
     "👀 कोणाचं नाव येणार?",
     "🤣 हा बघ आजचा meme!"
+]
+
+EPISODE_HIGHLIGHTS = [
+    "🔥 आजचा Highlight: मोठा भांडण आणि धमाल task!",
+    "😱 आजच्या episode मध्ये जबरदस्त twist!",
+    "😂 आज घरात comedy + drama दोन्ही!",
+    "👑 आज captain बदलला!",
 ]
 
 # ====== HELPERS ======
@@ -61,6 +68,12 @@ def should_reply(chat_id):
         return True
     return False
 
+def contestant_reply(text):
+    for name in CONTESTANTS:
+        if name.lower() in text:
+            return f"👀 {name} बद्दल बोलतोयस का? आज तो/ती full highlight मध्ये आहे 😄🔥"
+    return None
+
 # ====== COMMANDS ======
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -71,29 +84,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/stats – Bot stats\n"
         "/quiz – Bigg Boss quiz\n"
         "/syncmemes – Admin only\n\n"
-        "माझ्याशी गप्पा मार, मी reply देतो 😄"
+        "माझ्याशी गप्पा मार 😄"
     )
 
 async def latest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if MEME_CACHE:
-        caption = random.choice(MEME_CAPTIONS)
-        await update.message.reply_photo(random.choice(MEME_CACHE), caption=caption)
+        await update.message.reply_photo(random.choice(MEME_CACHE), caption=random.choice(MEME_CAPTIONS))
     else:
-        await update.message.reply_text("Channel मध्ये अजून memes नाहीत 😭 आधी upload कर!")
+        await update.message.reply_text("Channel मध्ये अजून memes नाहीत 😭")
 
 async def random_meme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if MEME_CACHE:
-        caption = random.choice(MEME_CAPTIONS)
-        await update.message.reply_photo(random.choice(MEME_CACHE), caption=caption)
+        await update.message.reply_photo(random.choice(MEME_CACHE), caption=random.choice(MEME_CAPTIONS))
     else:
-        await update.message.reply_text("अजून memes नाहीत रे 😅 आधी upload कर!")
+        await update.message.reply_text("अजून memes नाहीत 😅")
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"📊 Total Memes Stored: {len(MEME_CACHE)}")
 
 async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q, _ = random.choice(QUIZ_QUESTIONS)
-    await update.message.reply_text(f"🧠 Bigg Boss Quiz:\n{q}\n\nउत्तर दे बघू 😄")
+    await update.message.reply_text(f"🧠 Bigg Boss Quiz:\n{q}")
 
 async def syncmemes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -122,42 +133,42 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.lower()
 
+    # Meme मागितला तर
     if "meme" in text:
         if MEME_CACHE:
-            caption = random.choice(MEME_CAPTIONS)
-            await update.message.reply_photo(random.choice(MEME_CACHE), caption=caption)
+            await update.message.reply_photo(random.choice(MEME_CACHE), caption=random.choice(MEME_CAPTIONS))
         else:
             await update.message.reply_text("अजून memes नाहीत 😭")
         return
 
-    reply = random.choice(BB_REPLIES)
-    await update.message.reply_text(reply)
+    # Contestant नावावर smart reply
+    c_reply = contestant_reply(text)
+    if c_reply:
+        await update.message.reply_text(c_reply)
+        return
+
+    await update.message.reply_text(random.choice(BB_REPLIES))
 
 async def on_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="🗳️ Vote टाका! कोण जिंकणार वाटतंय?"
+        text="🗳️ Vote केलास का? खाली comment टाक 👇"
     )
 
-# ====== AUTO DAILY QUIZ ======
+# ====== AUTO JOBS ======
 async def daily_quiz(context: ContextTypes.DEFAULT_TYPE):
     q, _ = random.choice(QUIZ_QUESTIONS)
-    await context.bot.send_message(
-        chat_id=TARGET_CHAT_ID,
-        text=f"🧠 Daily Bigg Boss Quiz:\n{q}"
-    )
+    await context.bot.send_message(TARGET_CHAT_ID, f"🧠 Daily Bigg Boss Quiz:\n{q}")
 
-# ====== EPISODE REMINDER (7:30 PM IST example) ======
 async def episode_reminder(context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(
-        chat_id=TARGET_CHAT_ID,
-        text="🔔 आज रात्री Bigg Boss Marathi चा episode आहे! पाहायला विसरू नको 🔥📺"
-    )
+    await context.bot.send_message(TARGET_CHAT_ID, "🔔 आज 7:30 PM ला Bigg Boss Marathi episode आहे! 🔥📺")
+
+async def episode_highlights(context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(TARGET_CHAT_ID, f"🎬 Episode Highlights:\n{random.choice(EPISODE_HIGHLIGHTS)}")
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("latest", latest))
     app.add_handler(CommandHandler("random", random_meme))
@@ -165,20 +176,16 @@ def main():
     app.add_handler(CommandHandler("quiz", quiz))
     app.add_handler(CommandHandler("syncmemes", syncmemes))
 
-    # Messages
     app.add_handler(MessageHandler(filters.PHOTO, receive_memes))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^done$"), done_sync))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_all))
     app.add_handler(PollHandler(on_poll))
 
-    # Jobs
-    job_queue = app.job_queue
+    jq = app.job_queue
 
-    # Daily quiz – दररोज रात्री 9:30 वाजता
-    job_queue.run_daily(daily_quiz, time=datetime.strptime("16:05", "%H:%M").time())
-
-    # Episode reminder – रात्री 7:30 वाजता
-    job_queue.run_daily(episode_reminder, time=datetime.strptime("16:03", "%H:%M").time())
+    jq.run_daily(episode_reminder, time=dtime(hour=19, minute=30))
+    jq.run_daily(daily_quiz, time=dtime(hour=21, minute=30))
+    jq.run_daily(episode_highlights, time=dtime(hour=22, minute=0))
 
     print("🤖 Bigg Boss Marathi Bot Started...")
     app.run_polling(drop_pending_updates=True)
