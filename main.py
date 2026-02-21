@@ -16,11 +16,9 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN Railway Variables मध्ये add केलेला नाही!")
 
-# ---- Memory for spam control ----
 LAST_REPLY = {}
-REPLY_COOLDOWN = 30  # seconds
+REPLY_COOLDOWN = 20  # seconds
 
-# ---- Text memes & replies ----
 BB_REPLIES = [
     "आज eviction कोणाचं होईल वाटतंय? 😬",
     "Wildcard आला तर गेमच बदलून जाईल 🔥",
@@ -36,14 +34,15 @@ TEXT_MEMES = [
     "घरात drama नसेल तर मजाच नाही 😎🔥",
 ]
 
-# ---- Random meme image API ----
 def get_random_meme_image():
     try:
         r = requests.get("https://meme-api.com/gimme", timeout=10)
-        data = r.json()
-        return data.get("url")
-    except:
-        return None
+        if r.status_code == 200:
+            data = r.json()
+            return data.get("url")
+    except Exception as e:
+        print("Meme API error:", e)
+    return None
 
 def should_reply(chat_id):
     now = time.time()
@@ -53,35 +52,35 @@ def should_reply(chat_id):
         return True
     return False
 
-# ---- Handlers ----
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "मी Bigg Boss Marathi Fan आहे 🔥\nEviction, Wildcard, Drama सगळ्यावर गप्पा मारूया 😄"
+        "मी Bigg Boss Marathi Fan Bot आहे 🔥\n'meme de' लिहिलं की image meme येईल 😄"
     )
 
 async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
 
-    chat_id = update.effective_chat.id
-
-    # Admin / bot messages skip
     if update.message.from_user.is_bot:
         return
 
-    # Spam control
+    chat_id = update.effective_chat.id
+
     if not should_reply(chat_id):
         return
 
-    text = update.message.text.lower()
+    text = update.message.text.lower().strip()
 
-    # Meme command
+    # ---- FORCE IMAGE MEME ----
     if "meme" in text:
         meme_url = get_random_meme_image()
         if meme_url:
-            await update.message.reply_photo(meme_url, caption="😂🔥 Bigg Boss style meme")
+            await update.message.reply_photo(
+                photo=meme_url,
+                caption="😂🔥 Bigg Boss Meme"
+            )
         else:
-            await update.message.reply_text(random.choice(TEXT_MEMES))
+            await update.message.reply_text("आज meme API down आहे 😭 नंतर try कर")
         return
 
     if "eviction" in text:
@@ -98,16 +97,13 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(reply)
 
 async def on_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    poll = update.poll
-    if not poll:
+    if not update.poll:
         return
-
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="या poll वर मत द्या रे 😄 कोण जिंकणार वाटतंय?"
     )
 
-# ---- Main ----
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
