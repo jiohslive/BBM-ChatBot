@@ -1,7 +1,6 @@
 import os
 import random
 import time
-import asyncio
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -11,7 +10,6 @@ from telegram.ext import (
     filters,
 )
 
-# ✅ Railway Variables
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 
@@ -63,13 +61,11 @@ async def receive_forwarded_memes(update: Update, context: ContextTypes.DEFAULT_
 async def done_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
-
     await update.message.reply_text(f"✅ {len(MEME_CACHE)} memes sync झाले 🔥")
 
 async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
-
     if update.message.from_user.is_bot:
         return
 
@@ -91,7 +87,7 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(random.choice(BB_REPLIES))
 
-async def main():
+def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -101,7 +97,7 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_all))
 
     print("🤖 Bigg Boss Marathi Bot Started...")
-    await app.run_polling(drop_pending_updates=True)
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
