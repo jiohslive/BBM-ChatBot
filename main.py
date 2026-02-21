@@ -1,24 +1,26 @@
 import os
 import random
-import asyncio
 import time
+import asyncio
 from telegram import Update
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler,
-    ContextTypes, filters
+    ApplicationBuilder,
+    ContextTypes,
+    MessageHandler,
+    CommandHandler,
+    filters,
 )
 
-# ====== CONFIG (Railway Variables) ======
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")   # Railway Variables मधून येईल
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))    # optional आहे
+# ✅ Railway Variables
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 
-if not BOT_TOKEN:
+if not TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN Railway Variables मध्ये add केलेला नाही!")
 
-# ====== DATA ======
-MEME_CACHE = []          # Admin forward करून memes भरू शकतो
+MEME_CACHE = []
 LAST_REPLY = {}
-REPLY_COOLDOWN = 10     # seconds
+REPLY_COOLDOWN = 10
 
 BB_REPLIES = [
     "आज eviction कोणाचं होईल वाटतंय? 😬",
@@ -28,11 +30,10 @@ BB_REPLIES = [
     "Captaincy task मस्त रंगणार वाटतो 👑",
 ]
 
-# ====== COMMANDS ======
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 Bigg Boss Marathi Fan Bot Started!\n\n"
-        "👉 'meme de' लिहिलं की meme मिळेल\n"
+        "👉 'meme de' लिहिलं की memes मिळतील\n"
         "👉 Admin ने आधी /syncmemes करायचं"
     )
 
@@ -44,15 +45,14 @@ def should_reply(chat_id):
         return True
     return False
 
-# ====== ADMIN: SYNC MEMES ======
 async def sync_memes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if ADMIN_ID and update.effective_user.id != ADMIN_ID:
+    if update.effective_user.id != ADMIN_ID:
         await update.message.reply_text("हे command फक्त admin साठी आहे ❌")
         return
 
     MEME_CACHE.clear()
     await update.message.reply_text(
-        "📥 आता memes bot ला forward कर.\n"
+        "📥 Channel मधले memes bot ला forward कर.\n"
         "सगळे forward झाले की 'done' लिही."
     )
 
@@ -61,14 +61,15 @@ async def receive_forwarded_memes(update: Update, context: ContextTypes.DEFAULT_
         MEME_CACHE.append(update.message.photo[-1].file_id)
 
 async def done_sync(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if ADMIN_ID and update.effective_user.id != ADMIN_ID:
+    if update.effective_user.id != ADMIN_ID:
         return
+
     await update.message.reply_text(f"✅ {len(MEME_CACHE)} memes sync झाले 🔥")
 
-# ====== AUTO REPLY + MEME ======
 async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
+
     if update.message.from_user.is_bot:
         return
 
@@ -88,22 +89,10 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Channel मध्ये अजून memes नाहीत 😭 आधी upload कर!")
         return
 
-    if "eviction" in text:
-        reply = "Eviction यावेळी खूपच shocking जाणार वाटतंय 😬"
-    elif "wildcard" in text:
-        reply = "Wildcard आला तर घरात आग लागेल 🔥😂"
-    elif "nomination" in text:
-        reply = "Nomination लिस्ट पाहून धक्का बसलाय 😅"
-    elif "fight" in text or "भांडण" in text:
-        reply = "आज भांडण झालंच पाहिजे नाहीतर episode फिक्का 😂🔥"
-    else:
-        reply = random.choice(BB_REPLIES)
+    await update.message.reply_text(random.choice(BB_REPLIES))
 
-    await update.message.reply_text(reply)
-
-# ====== MAIN ======
 async def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("syncmemes", sync_memes))
