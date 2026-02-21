@@ -1,7 +1,7 @@
 import os
 import random
-import asyncio
 import time
+import requests
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -16,120 +16,107 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN Railway Variables मध्ये add केलेला नाही!")
 
-# 👉 Group ID optional (नसला तरी चालेल)
-GROUP_CHAT_ID = None
+# ---- Memory for spam control ----
+LAST_REPLY = {}
+REPLY_COOLDOWN = 30  # seconds
 
-# ---- Season 6 Contestants (example names - तू बदलू शकतोस) ----
-SEASON6_CONTESTANTS = [
-    "दीपाली", "विशाल", "राकेश", "तन्वी", "प्रभु",
-    "रुचिता", "रोशन", "सागर", "अनुश्री", "सचिन कुमावत"
-]
-
-# ---- Replies ----
+# ---- Text memes & replies ----
 BB_REPLIES = [
-    "आज eviction कोणाचं होईल असं वाटतंय? 😬",
+    "आज eviction कोणाचं होईल वाटतंय? 😬",
     "Wildcard आला तर गेमच बदलून जाईल 🔥",
-    "आजचा task भारी होता रे 😂",
-    "पुन्हा भांडण होणार वाटतंय 😅",
-    "आजचा एपिसोड फुल ड्रामा 🔥",
+    "आजचा episode full drama असणार वाटतो 😂🔥",
+    "त्या दोघांचं भांडण आज पेटणार वाटतं 😅",
+    "Captaincy task मस्त रंगणार वाटतो 👑",
 ]
 
-MEMES = [
+TEXT_MEMES = [
     "Bigg Boss घरात शांतता म्हणजे वादळ येण्याआधीची शांतता 😂",
-    "आज episode पाहून झोप येणार नाही 🤣",
+    "Nomination आला की सगळे suddenly साधू बनतात 😆",
+    "आज episode पाहून झोप जाणार नाही 🤣",
     "घरात drama नसेल तर मजाच नाही 😎🔥",
-    "Nomination आला की सगळे serious होतात 😆",
 ]
 
-# ---- Simple spam control ----
-last_reply_time = {}
+# ---- Random meme image API ----
+def get_random_meme_image():
+    try:
+        r = requests.get("https://meme-api.com/gimme", timeout=10)
+        data = r.json()
+        return data.get("url")
+    except:
+        return None
 
-def can_reply(chat_id: int, cooldown=5):
+def should_reply(chat_id):
     now = time.time()
-    last = last_reply_time.get(chat_id, 0)
-    if now - last > cooldown:
-        last_reply_time[chat_id] = now
+    last = LAST_REPLY.get(chat_id, 0)
+    if now - last > REPLY_COOLDOWN:
+        LAST_REPLY[chat_id] = now
         return True
     return False
 
-# ---- Commands ----
+# ---- Handlers ----
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🔥 Bigg Boss Marathi Fan Bot Ready!\n"
-        "Eviction, Wildcard, Drama, Memes सगळं बोलेन 😄"
+        "मी Bigg Boss Marathi Fan आहे 🔥\nEviction, Wildcard, Drama सगळ्यावर गप्पा मारूया 😄"
     )
 
-# ---- Reply to all messages ----
 async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
 
     chat_id = update.effective_chat.id
-    text = update.message.text.lower()
 
-    if not can_reply(chat_id):
+    # Admin / bot messages skip
+    if update.message.from_user.is_bot:
         return
 
-    if "eviction" in text or "eliminate" in text:
-        reply = f"या आठवड्यात {random.choice(SEASON6_CONTESTANTS)} ला धोका वाटतोय 😬"
+    # Spam control
+    if not should_reply(chat_id):
+        return
+
+    text = update.message.text.lower()
+
+    # Meme command
+    if "meme" in text:
+        meme_url = get_random_meme_image()
+        if meme_url:
+            await update.message.reply_photo(meme_url, caption="😂🔥 Bigg Boss style meme")
+        else:
+            await update.message.reply_text(random.choice(TEXT_MEMES))
+        return
+
+    if "eviction" in text:
+        reply = "Eviction यावेळी खूपच shocking जाणार वाटतंय 😬 कोण जाईल वाटतं?"
     elif "wildcard" in text:
-        reply = "Wildcard आला तर गेमच उलटा होईल 🔥"
+        reply = "Wildcard आला तर घरात आग लागेल 🔥😂"
     elif "nomination" in text:
-        reply = "Nomination लिस्ट बघून धक्का बसलाय 😅"
-    elif "meme" in text or "memes" in text:
-        reply = random.choice(MEMES)
+        reply = "Nomination लिस्ट पाहून धक्का बसलाय 😅"
+    elif "fight" in text or "भांडण" in text:
+        reply = "आज भांडण झालंच पाहिजे नाहीतर episode फिक्का 😂🔥"
     else:
         reply = random.choice(BB_REPLIES)
 
     await update.message.reply_text(reply)
 
-# ---- Poll react ----
 async def on_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     poll = update.poll
-    if poll and poll.options:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="या poll वर मत द्या रे 😄 कोण जिंकणार वाटतंय?"
-        )
+    if not poll:
+        return
 
-# ---- Jobs ----
-async def daily_prediction(context: ContextTypes.DEFAULT_TYPE):
-    chat_id = context.job.chat_id
-    msg = random.choice([
-        "आज मोठं भांडण होणार वाटतंय 🔥",
-        "आज कोणीतरी रडणार असं वाटतं 😅",
-        "आजचा task खूप मजेशीर असेल 😂",
-    ])
-    await context.bot.send_message(chat_id=chat_id, text=msg)
-
-async def weekly_elimination_prediction(context: ContextTypes.DEFAULT_TYPE):
-    chat_id = context.job.chat_id
-    loser = random.choice(SEASON6_CONTESTANTS)
     await context.bot.send_message(
-        chat_id=chat_id,
-        text=f"माझ्या मते या आठवड्यात {loser} eliminate होऊ शकतो 😬"
+        chat_id=update.effective_chat.id,
+        text="या poll वर मत द्या रे 😄 कोण जिंकणार वाटतंय?"
     )
-
-# ---- Start jobs after /start ----
-async def start_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-
-    context.job_queue.run_repeating(daily_prediction, interval=3600, first=60, chat_id=chat_id)
-    context.job_queue.run_repeating(weekly_elimination_prediction, interval=604800, first=120, chat_id=chat_id)
-
-    await update.message.reply_text("Auto predictions सुरू केल्या आहेत 🔥")
 
 # ---- Main ----
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("live", start_jobs))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_all))
     app.add_handler(PollHandler(on_poll))
 
     print("🤖 Bigg Boss Marathi Bot Started...")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
