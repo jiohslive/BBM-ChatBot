@@ -1,6 +1,5 @@
 import os
 import random
-import asyncio
 import time
 from telegram import Update
 from telegram.ext import (
@@ -19,13 +18,12 @@ if not TOKEN:
 GROUP_CHAT_ID = None
 LAST_REPLY_TIME = {}
 
-# ---- Replies ----
 BB_REPLIES = [
     "आजचं eviction कोणाचं होईल असं वाटतंय? 😬",
-    "Wildcard entry आला तर गेमच बदलून जाईल 🔥",
+    "Wildcard आला तर गेमच बदलून जाईल 🔥",
     "आजचा episode full drama वाटतोय 😂",
     "Nomination लिस्ट बघून धक्का बसलाय 😅",
-    "Captaincy task कोण जिंकणार असं वाटतंय?",
+    "Captaincy task कोण जिंकणार वाटतंय?",
     "त्या दोघांमध्ये पुन्हा भांडण होणार वाटतंय 😆",
 ]
 
@@ -37,7 +35,6 @@ MEMES = [
     "Eviction च्या दिवशी सगळे emotional mode मध्ये 😭",
 ]
 
-# ---- Utils ----
 def cooldown_ok(chat_id, seconds=10):
     now = time.time()
     last = LAST_REPLY_TIME.get(chat_id, 0)
@@ -49,7 +46,6 @@ def cooldown_ok(chat_id, seconds=10):
 def random_reply():
     return random.choice(BB_REPLIES)
 
-# ---- Handlers ----
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global GROUP_CHAT_ID
     GROUP_CHAT_ID = update.effective_chat.id
@@ -65,7 +61,6 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = update.effective_chat.id
 
-    # Spam control: 10 सेकंदात एक reply
     if not cooldown_ok(chat_id, seconds=10):
         return
 
@@ -80,11 +75,7 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif "meme" in text or "मिम" in text:
         reply = random.choice(MEMES)
     else:
-        # 30% वेळा meme टाका
-        if random.random() < 0.3:
-            reply = random.choice(MEMES)
-        else:
-            reply = random_reply()
+        reply = random.choice(MEMES) if random.random() < 0.3 else random_reply()
 
     await update.message.reply_text(reply)
 
@@ -95,7 +86,6 @@ async def on_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text="या poll वर मत द्या रे 😄 कोण जिंकणार वाटतंय?"
     )
 
-# ---- Scheduled Messages ----
 async def daily_prediction(context: ContextTypes.DEFAULT_TYPE):
     predictions = [
         "आज मोठं भांडण होणार वाटतंय 🔥",
@@ -119,14 +109,13 @@ async def weekly_elimination_prediction(context: ContextTypes.DEFAULT_TYPE):
     ]
     await context.bot.send_message(context.job.chat_id, random.choice(guesses))
 
-async def start_jobs(context: ContextTypes.DEFAULT_TYPE):
+def start_jobs(context: ContextTypes.DEFAULT_TYPE):
     if GROUP_CHAT_ID:
         context.job_queue.run_repeating(daily_prediction, interval=3600, first=30, chat_id=GROUP_CHAT_ID)
         context.job_queue.run_repeating(episode_recap, interval=7200, first=60, chat_id=GROUP_CHAT_ID)
         context.job_queue.run_repeating(weekly_elimination_prediction, interval=604800, first=120, chat_id=GROUP_CHAT_ID)
 
-# ---- Main ----
-async def main():
+def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -136,7 +125,7 @@ async def main():
     app.job_queue.run_once(start_jobs, 20)
 
     print("🤖 Bigg Boss Marathi Bot Started...")
-    await app.run_polling()
+    app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
