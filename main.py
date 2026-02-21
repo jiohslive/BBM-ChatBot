@@ -175,10 +175,10 @@ def main():
     job_queue = app.job_queue
 
     # Daily quiz – दररोज रात्री 9:30 वाजता
-    job_queue.run_daily(daily_quiz, time=datetime.strptime("21:30", "%H:%M").time())
+    job_queue.run_daily(daily_quiz, time=datetime.strptime("16:05", "%H:%M").time())
 
     # Episode reminder – रात्री 7:30 वाजता
-    job_queue.run_daily(episode_reminder, time=datetime.strptime("19:30", "%H:%M").time())
+    job_queue.run_daily(episode_reminder, time=datetime.strptime("16:03", "%H:%M").time())
 
     print("🤖 Bigg Boss Marathi Bot Started...")
     app.run_polling(drop_pending_updates=True)
