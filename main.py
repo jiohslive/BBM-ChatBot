@@ -7,7 +7,6 @@ from telegram.ext import (
     ContextTypes,
     MessageHandler,
     CommandHandler,
-    PollHandler,
     filters,
 )
 
@@ -15,26 +14,24 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise RuntimeError("TELEGRAM_BOT_TOKEN Railway Variables मध्ये add केलेला नाही!")
 
-# 👉 तुझ्या channel चा username ( @ शिवाय )
-MEME_CHANNEL_USERNAME = "BigBossMarathiMemes"
+# 👉 तुझ्या channel चा username इथे टाक ( @ शिवाय )
+MEME_CHANNEL_USERNAME = "BigBossMarathiMemes"  # example: BigBossMemes
 
 LAST_REPLY = {}
-REPLY_COOLDOWN = 15  # seconds
+REPLY_COOLDOWN = 10  # seconds
 
 BB_REPLIES = [
     "आज eviction कोणाचं होईल वाटतंय? 😬",
     "Wildcard आला तर गेमच बदलून जाईल 🔥",
-    "आजच्या episode मध्ये full drama असणार आहे वाटतंय 😂🔥",
+    "आजचा episode full drama असणार वाटतो 😂🔥",
     "त्या दोघांचं भांडण आज पेटणार वाटतं 😅",
     "Captaincy task मस्त रंगणार वाटतो 👑",
 ]
 
-BB_MEME_CAPTIONS = [
-    "जेव्हा Bigg Boss घरात शांतता असते... काहीतरी गडबड असते 😂🔥",
-    "Nomination दिवशी सगळे best friends होतात 😆",
-    "Wildcard येणार म्हटलं की game पलटतो 💥",
-    "आजचा episode पाहून group वर memesच memes 🤣🔥",
-]
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "मी Bigg Boss Marathi Fan Bot आहे 🔥\n'meme de' लिहिलं की Season 6 चे memes येतील 😎"
+    )
 
 def should_reply(chat_id):
     now = time.time()
@@ -44,30 +41,21 @@ def should_reply(chat_id):
         return True
     return False
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "मी Bigg Boss Marathi Fan Bot आहे 🔥\n"
-        "'meme de' लिहिलं की Season 6 चे memes येतील 😎"
-    )
-
 async def get_random_meme_from_channel(context: ContextTypes.DEFAULT_TYPE):
-    """
-    Channel मधून random meme (photo) काढतो
-    """
     try:
         chat = await context.bot.get_chat(f"@{MEME_CHANNEL_USERNAME}")
-        history = []
-        async for msg in context.bot.get_chat_history(chat.id, limit=50):
+        messages = []
+        async for msg in context.bot.get_chat_history(chat_id=chat.id, limit=50):
             if msg.photo:
-                history.append(msg)
+                messages.append(msg)
 
-        if not history:
+        if not messages:
             return None
 
-        return random.choice(history)
+        return random.choice(messages)
 
     except Exception as e:
-        print("Channel meme error:", e)
+        print("Channel meme fetch error:", e)
         return None
 
 async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -78,27 +66,24 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     chat_id = update.effective_chat.id
-
     if not should_reply(chat_id):
         return
 
     text = update.message.text.lower().strip()
 
-    # ---- FORCE IMAGE MEME FROM CHANNEL ----
+    # 🔥 MEME COMMAND
     if "meme" in text:
         meme_msg = await get_random_meme_from_channel(context)
         if meme_msg:
-            caption = random.choice(BB_MEME_CAPTIONS)
             await update.message.reply_photo(
                 photo=meme_msg.photo[-1].file_id,
-                caption=caption
+                caption="😂🔥 Bigg Boss Marathi S6 Meme"
             )
         else:
-            await update.message.reply_text(
-                "Channel मध्ये अजून memes नाहीत 😭 आधी upload कर!"
-            )
+            await update.message.reply_text("Channel मध्ये अजून memes नाहीत 😭 आधी upload कर!")
         return
 
+    # NORMAL CHAT
     if "eviction" in text:
         reply = "Eviction यावेळी खूपच shocking जाणार वाटतंय 😬 कोण जाईल वाटतं?"
     elif "wildcard" in text:
@@ -112,27 +97,11 @@ async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(reply)
 
-async def on_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.poll:
-        return
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="या poll वर मत द्या रे 😄 कोण जिंकणार वाटतंय?"
-    )
-
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    print("Bot Error:", context.error)
-
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_all))
-    app.add_handler(PollHandler(on_poll))
-
-    # ✅ Error handler add केलं – NoneType await error थांबेल
-    app.add_error_handler(error_handler)
 
     print("🤖 Bigg Boss Marathi Bot Started...")
     app.run_polling(drop_pending_updates=True)
